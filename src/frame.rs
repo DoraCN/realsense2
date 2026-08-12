@@ -197,8 +197,9 @@ impl FrameSet {
         self.len() == 0
     }
 
-    /// Extract the frame at `index`. The returned frame's lifetime is bound to
-    /// this frameset, so we add a reference to make it independent.
+    /// Extract the frame at `index`. The returned frame owns its own reference
+    /// and may outlive this frameset; `rs2_extract_frame` returns a handle that
+    /// must be released with `rs2_release_frame`, which [`Frame`] does on drop.
     pub fn extract(&self, index: usize) -> Option<Frame> {
         let mut err = ptr::null_mut();
         let frame_ptr = unsafe { ffi::rs2_extract_frame(self.handle, index as i32, &mut err) };
@@ -208,12 +209,6 @@ impl FrameSet {
         }
         if frame_ptr.is_null() {
             return None;
-        }
-        // Add our own reference so the extracted frame survives the frameset.
-        let mut add_err = ptr::null_mut();
-        unsafe { ffi::rs2_frame_add_ref(frame_ptr, &mut add_err) };
-        if !add_err.is_null() {
-            let _ = unsafe { Rs2Error::from_ptr(add_err) };
         }
         Some(unsafe { Frame::from_raw(frame_ptr) })
     }
