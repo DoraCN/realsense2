@@ -72,7 +72,7 @@ fn analyze(frame: &realsense2::Frame) -> (f32, f32) {
 }
 
 fn main() -> Result<(), Rs2Error> {
-    let (width, height, fps) = match std::env::args().nth(2) {
+    let (width, height, fps) = match std::env::args().nth(1) {
         Some(arg) => {
             let (w, h, f) = parse_resolution(&arg).map_err(|e| Rs2Error {
                 message: e,

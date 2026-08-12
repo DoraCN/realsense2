@@ -64,7 +64,7 @@ fn fmt_mm(v: f32) -> String {
 }
 
 fn main() -> Result<(), Rs2Error> {
-    let (width, height, fps) = match std::env::args().nth(2) {
+    let (width, height, fps) = match std::env::args().nth(1) {
         Some(arg) => {
             let (w, h, f) = parse_resolution(&arg).map_err(|e| Rs2Error {
                 message: e,

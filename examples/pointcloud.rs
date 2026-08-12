@@ -67,7 +67,7 @@ fn main() -> Result<(), Rs2Error> {
     let mut out_path = "out.ply".to_string();
     let mut serial_override: Option<String> = None;
     let mut capture_seconds = 5.0f32;
-    let mut args = std::env::args().skip(2);
+    let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--serial" => {

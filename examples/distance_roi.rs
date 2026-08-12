@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 fn main() -> Result<(), Rs2Error> {
     let mut serial: Option<String> = None;
     let mut roi_frac = 0.5f32;
-    let mut args = std::env::args().skip(2);
+    let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--serial" => {
