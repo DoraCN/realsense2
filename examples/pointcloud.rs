@@ -2,10 +2,11 @@
 //! (with color texture), and exports it as PLY or ASCII PCD.
 //!
 //! Usage:
-//!   cargo run --example pointcloud -- <out.ply|out.pcd>              (default out.ply)
-//!   cargo run --example pointcloud -- <out.ply> --serial <SN>        (pick camera by serial)
-//! A frame is captured after the warm-up period, exported once, and the
-//! program exits.
+//!   cargo run --example pointcloud -- <out.ply|out.pcd>
+//!   cargo run --example pointcloud -- <out.ply> --serial <SN>
+//!   cargo run --example pointcloud -- <out.ply> --seconds <N>   (capture window, default 5)
+//! A frame is captured after a 2s warm-up within the capture window,
+//! exported once, and the program exits.
 
 use realsense2::{
     export_ply, pointcloud, Config, Context, Pipeline, Rs2CameraInfo, Rs2Error, Rs2Format,
@@ -65,6 +66,7 @@ fn export_pcd(points: &realsense2::Frame, path: &str) -> Result<(), Rs2Error> {
 fn main() -> Result<(), Rs2Error> {
     let mut out_path = "out.ply".to_string();
     let mut serial_override: Option<String> = None;
+    let mut capture_seconds = 5.0f32;
     let mut args = std::env::args().skip(2);
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -73,6 +75,16 @@ fn main() -> Result<(), Rs2Error> {
                 if serial_override.is_none() {
                     eprintln!("--serial requires a value");
                     std::process::exit(2);
+                }
+            }
+            "--seconds" => {
+                let v = args.next().and_then(|s| s.parse().ok());
+                match v {
+                    Some(s) if s > 0.0 => capture_seconds = s,
+                    _ => {
+                        eprintln!("--seconds requires a positive number");
+                        std::process::exit(2);
+                    }
                 }
             }
             _ => out_path = arg,
@@ -104,13 +116,18 @@ fn main() -> Result<(), Rs2Error> {
 
     let pc = pointcloud()?;
     println!(
-        "Generating point cloud -> {} (SN {}) ...",
-        out_path, which
+        "Generating point cloud -> {} (SN {}, capturing {}s) ...",
+        out_path, which, capture_seconds
     );
 
     let start = Instant::now();
+    let capture_duration = Duration::from_secs_f32(capture_seconds);
 
     loop {
+        if start.elapsed() >= capture_duration {
+            eprintln!("Timeout: no point cloud exported (check device / resolution)");
+            return Ok(());
+        }
         let frameset = pipeline.wait_for_frames(5000)?;
         let depth = frameset.frames_of_type(Rs2StreamKind::Depth);
         let Some(depth_frame) = depth.first() else {
