@@ -9,7 +9,9 @@ Safe Rust bindings for the [Intel RealSense SDK 2.0](https://github.com/realsens
 - Hand-written `extern "C"` bindings to the librealsense2 C API (see `src/ffi.rs`)
 - Safe, RAII-based wrappers: `Context`, `Device`, `DeviceList`, `Config`,
   `Pipeline`, `Frame`, `FrameSet`, `StreamProfile`
-- Enum types mirroring the C headers (`Rs2StreamKind`, `Rs2Format`, `Rs2CameraInfo`, …)
+- Enum types mirroring the C headers (`Rs2StreamKind`, `Rs2Format`, `Rs2CameraInfo`,
+  `Rs2Option`, …)
+- Post-processing: depth filter chain, depth-to-color alignment, point cloud
 - No bindgen / clang required — builds with just a C linker
 
 ## Requirements
@@ -64,6 +66,39 @@ fn main() -> Result<(), realsense2::Rs2Error> {
 cargo run --example enumerate_devices     # list connected cameras
 cargo run --example depth_stream          # center-pixel distance, 640x480@30
 cargo run --example depth_stream -- 848x480@60
+cargo run --example filter_chain          # Decimation->Spatial->Temporal->HoleFill
+cargo run --example align_stream          # depth aligned onto color viewpoint
+cargo run --example pointcloud -- out.ply # point-cloud export (PLY or PCD)
+cargo run --example benchmark             # fps across resolutions (--color for d+c)
+```
+
+## Post-processing
+
+Depth filters, alignment, and point-cloud generation are available through the
+`processing` module, built on librealsense processing blocks with an internal
+frame queue (no Rust callbacks):
+
+```rust
+use realsense2::{decimation, spatial, temporal, hole_filling, align_to_color,
+                 pointcloud, export_ply, Rs2Option};
+
+let decim = decimation()?;
+decim.set_option(Rs2Option::FilterMagnitude, 2.0)?; // 2x downsample
+
+// push a depth frame through the chain, one stage at a time:
+decim.process_frame(&depth_frame)?;
+let filtered = decim.output(5000)?.unwrap();
+
+// align depth onto color (needs full frameset):
+let align = align_to_color()?;
+align.process_frameset(&frameset)?;
+let aligned = align.output(5000)?.unwrap();
+
+// point cloud (also needs full frameset for texture):
+let pc = pointcloud()?;
+pc.process_frameset(&frameset)?;
+let points = pc.output(5000)?.unwrap();
+export_ply(&points, "cloud.ply", Some(&color_frame))?;
 ```
 
 ## License
