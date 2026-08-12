@@ -87,7 +87,6 @@ fn main() -> Result<(), Rs2Error> {
     println!("Generating point cloud -> {} (streaming...)", out_path);
 
     let start = Instant::now();
-    let mut exported = false;
 
     loop {
         let frameset = pipeline.wait_for_frames(5000)?;
@@ -103,7 +102,7 @@ fn main() -> Result<(), Rs2Error> {
             continue;
         };
 
-        if start.elapsed() >= Duration::from_millis(2000) && !exported {
+        if start.elapsed() >= Duration::from_millis(2000) {
             let n = points_frame.points_count();
             let vertices = points_frame.vertices();
             let non_zero = vertices.iter().filter(|v| v.xyz.iter().all(|c| *c != 0.0)).count();
@@ -123,7 +122,7 @@ fn main() -> Result<(), Rs2Error> {
                 export_ply(&points_frame, &out_path, None)?;
             }
             println!("Saved to {}", out_path);
-            exported = true;
+            return Ok(()); // export once, then exit
         }
     }
 }
