@@ -77,7 +77,7 @@ impl StreamProfile {
         if !err.is_null() {
             let _ = unsafe { Rs2Error::from_ptr(err) };
         }
-        let resolution = if self.is_video() {
+        let resolution = if is_video_stream(stream) {
             let mut width: i32 = 0;
             let mut height: i32 = 0;
             let mut res_err = ptr::null_mut();
@@ -102,14 +102,13 @@ impl StreamProfile {
     }
 
     pub fn is_video(&self) -> bool {
-        matches!(
-            self.stream_kind(),
-            Rs2StreamKind::Depth
-                | Rs2StreamKind::Color
-                | Rs2StreamKind::Infrared
-                | Rs2StreamKind::Fisheye
-        )
+        is_video_stream(self.stream_kind() as i32)
     }
+}
+
+/// Whether the raw C stream value is a video (2D image) stream.
+fn is_video_stream(stream: i32) -> bool {
+    matches!(stream, 1 | 2 | 3 | 4) // Depth | Color | Infrared | Fisheye
 }
 
 impl Drop for StreamProfile {
