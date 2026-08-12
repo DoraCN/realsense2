@@ -1,0 +1,12 @@
+[package]
+name = "realsense2"
+version = "0.1.0"
+edition = "2021"
+description = "Safe Rust bindings for Intel RealSense SDK 2.0 (librealsense2), hand-written FFI"
+license = "Apache-2.0"
+keywords = ["realsense", "depth", "camera", "intel", "sensor"]
+categories = ["computer-vision", "external-ffi-bindings", "hardware-support"]
+links = "realsense2"
+
+[dependencies]
+libc = "0.2"
