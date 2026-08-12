@@ -99,7 +99,7 @@ fn main() -> Result<(), Rs2Error> {
 
         // Feed the whole frameset so the point cloud gets color texture.
         pc.process_frameset(&frameset)?;
-        let Some(points_frame) = pc.output(5000)? else {
+        let Some(points_frame) = pc.output_points(5000)? else {
             continue;
         };
 

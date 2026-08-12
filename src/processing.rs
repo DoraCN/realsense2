@@ -11,7 +11,7 @@ use std::ptr;
 use crate::error::Rs2Error;
 use crate::ffi;
 use crate::frame::{Frame, FrameSet};
-use crate::kind::{Rs2Option, Rs2StreamKind};
+use crate::kind::{Rs2Extension, Rs2Option, Rs2StreamKind};
 
 /// A frame queue feeding a processing block. Frames enqueued to the block come
 /// out the other end (possibly transformed) and can be dequeued by the caller.
@@ -136,6 +136,31 @@ impl ProcessingBlock {
             return Err(unsafe { Rs2Error::from_ptr(err) });
         }
         Ok(v)
+    }
+
+    /// Wait for the next *Points* frame from the output queue.
+    ///
+    /// Some blocks (point cloud, alignment) emit multiple frames per input
+    /// frameset — e.g. the point-cloud block outputs the generated Points frame
+    /// plus passes through the color frame untouched. This method skips
+    /// non-Points frames until a Points frame arrives or the timeout elapses.
+    pub fn output_points(&self, timeout_ms: u32) -> Result<Option<Frame>, Rs2Error> {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms as u64);
+        loop {
+            let remaining = deadline
+                .saturating_duration_since(std::time::Instant::now())
+                .as_millis();
+            if remaining == 0 {
+                return Ok(None);
+            }
+            let Some(frame) = self.output(remaining as u32)? else {
+                return Ok(None);
+            };
+            if frame.is_extendable_to(Rs2Extension::Points) {
+                return Ok(Some(frame));
+            }
+            // non-Points frame (e.g. passthrough color): drop and keep waiting
+        }
     }
 }
 
