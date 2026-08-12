@@ -10,7 +10,7 @@ use std::ptr;
 
 use crate::error::Rs2Error;
 use crate::ffi;
-use crate::frame::Frame;
+use crate::frame::{Frame, FrameSet};
 use crate::kind::{Rs2Option, Rs2StreamKind};
 
 /// A frame queue feeding a processing block. Frames enqueued to the block come
@@ -92,6 +92,22 @@ impl ProcessingBlock {
         }
         let mut err = ptr::null_mut();
         unsafe { ffi::rs2_process_frame(self.handle, frame.raw(), &mut err) };
+        if !err.is_null() {
+            return Err(unsafe { Rs2Error::from_ptr(err) });
+        }
+        Ok(())
+    }
+
+    /// Send an entire frameset (all streams) into the block. Used by alignment
+    /// and point-cloud blocks, which need the color frame alongside depth.
+    pub fn process_frameset(&self, frameset: &FrameSet) -> Result<(), Rs2Error> {
+        let mut add_err = ptr::null_mut();
+        unsafe { ffi::rs2_frame_add_ref(frameset.raw(), &mut add_err) };
+        if !add_err.is_null() {
+            return Err(unsafe { Rs2Error::from_ptr(add_err) });
+        }
+        let mut err = ptr::null_mut();
+        unsafe { ffi::rs2_process_frame(self.handle, frameset.raw(), &mut err) };
         if !err.is_null() {
             return Err(unsafe { Rs2Error::from_ptr(err) });
         }

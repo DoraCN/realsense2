@@ -238,6 +238,11 @@ impl FrameSet {
             owned: true,
         }
     }
+
+    /// Raw C handle. Used internally by processing blocks.
+    pub(crate) fn raw(&self) -> *mut ffi::rs2_frame {
+        self.handle
+    }
     /// Number of embedded frames (one per enabled stream).
     pub fn len(&self) -> usize {
         let mut err = ptr::null_mut();
