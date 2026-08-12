@@ -92,13 +92,13 @@ fn main() -> Result<(), Rs2Error> {
     loop {
         let frameset = pipeline.wait_for_frames(5000)?;
         let depth = frameset.frames_of_type(Rs2StreamKind::Depth);
-        let color = frameset.frames_of_type(Rs2StreamKind::Color);
-        let (Some(depth_frame), Some(color_frame)) = (depth.first(), color.first()) else {
+        let Some(depth_frame) = depth.first() else {
             continue;
         };
 
-        // Feed the whole frameset so the point cloud gets color texture.
-        pc.process_frameset(&frameset)?;
+        // Feed depth only (official usage); a separate color stream can be
+        // enabled for textured point clouds via the TextureSource option.
+        pc.process_frame(depth_frame)?;
         let Some(points_frame) = pc.output_points(5000)? else {
             continue;
         };
@@ -118,7 +118,9 @@ fn main() -> Result<(), Rs2Error> {
             if out_path.ends_with(".pcd") {
                 export_pcd(&points_frame, &out_path)?;
             } else {
-                export_ply(&points_frame, &out_path, Some(color_frame))?;
+                // No texture coordinates on the points frame (depth-only input),
+                // so export without a texture frame.
+                export_ply(&points_frame, &out_path, None)?;
             }
             println!("Saved to {}", out_path);
             exported = true;

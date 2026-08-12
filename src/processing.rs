@@ -35,8 +35,9 @@ impl BlockQueue {
         let frame = unsafe { ffi::rs2_wait_for_frame(self.handle, timeout_ms, &mut err) };
         if !err.is_null() {
             let e = unsafe { Rs2Error::from_ptr(err) };
-            // "Frame didn't arrive within 5000" -> timeout, not a hard error.
-            if e.message.contains("didn't arrive") {
+            // "Frame did not arrive in time!" / "didn't arrive" -> timeout,
+            // not a hard error.
+            if e.message.contains("didn't arrive") || e.message.contains("did not arrive") {
                 return Ok(None);
             }
             return Err(e);
