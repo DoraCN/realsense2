@@ -15,11 +15,19 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// # Safety
+    ///
+    /// `handle` must be a valid frame whose ownership is transferred.
     pub(crate) unsafe fn from_raw(handle: *mut ffi::rs2_frame) -> Frame {
         Frame {
             handle,
             owned: true,
         }
+    }
+
+    /// Raw C handle. Used internally by processing blocks.
+    pub(crate) fn raw(&self) -> *mut ffi::rs2_frame {
+        self.handle
     }
 
     fn raw_data<'a>(&self) -> &'a [u8] {
@@ -154,6 +162,54 @@ impl Frame {
             return None;
         }
         Some(u)
+    }
+
+    /// If this is a Points frame, the number of vertices.
+    pub fn points_count(&self) -> usize {
+        let mut err = ptr::null_mut();
+        let n = unsafe { ffi::rs2_get_frame_points_count(self.handle, &mut err) };
+        if !err.is_null() {
+            let _ = unsafe { Rs2Error::from_ptr(err) };
+            return 0;
+        }
+        n.max(0) as usize
+    }
+
+    /// If this is a Points frame, the 3D vertices (meters, X right / Y up /
+    /// Z away from camera).
+    pub fn vertices(&self) -> &[ffi::rs2_vertex] {
+        let count = self.points_count();
+        if count == 0 {
+            return &[];
+        }
+        let mut err = ptr::null_mut();
+        let ptr = unsafe { ffi::rs2_get_frame_vertices(self.handle, &mut err) };
+        if !err.is_null() {
+            let _ = unsafe { Rs2Error::from_ptr(err) };
+            return &[];
+        }
+        if ptr.is_null() {
+            return &[];
+        }
+        unsafe { std::slice::from_raw_parts(ptr, count) }
+    }
+
+    /// If this is a Points frame, texture (u,v) coordinates per vertex.
+    pub fn texture_coordinates(&self) -> &[ffi::rs2_pixel] {
+        let count = self.points_count();
+        if count == 0 {
+            return &[];
+        }
+        let mut err = ptr::null_mut();
+        let ptr = unsafe { ffi::rs2_get_frame_texture_coordinates(self.handle, &mut err) };
+        if !err.is_null() {
+            let _ = unsafe { Rs2Error::from_ptr(err) };
+            return &[];
+        }
+        if ptr.is_null() {
+            return &[];
+        }
+        unsafe { std::slice::from_raw_parts(ptr, count) }
     }
 }
 

@@ -31,6 +31,7 @@ pub mod ffi;
 pub mod frame;
 pub mod kind;
 pub mod pipeline;
+pub mod processing;
 pub mod stream_profile;
 
 pub use config::Config;
@@ -39,7 +40,8 @@ pub use device::{Device, DeviceList};
 pub use error::Rs2Error;
 pub use frame::{Frame, FrameSet};
 pub use kind::{
-    Rs2CameraInfo, Rs2Distortion, Rs2Extension, Rs2Format, Rs2StreamKind,
+    Rs2CameraInfo, Rs2Distortion, Rs2Extension, Rs2Format, Rs2Option, Rs2StreamKind,
 };
 pub use pipeline::{ActiveProfile, Pipeline};
+pub use processing::{align_to_color, decimation, export_ply, hole_filling, pointcloud, spatial, temporal, ProcessingBlock};
 pub use stream_profile::{StreamProfile, StreamProfileList};

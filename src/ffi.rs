@@ -59,6 +59,18 @@ pub struct rs2_stream_profile_list {
 pub struct rs2_error {
     _private: [u8; 0],
 }
+#[repr(C)]
+pub struct rs2_processing_block {
+    _private: [u8; 0],
+}
+#[repr(C)]
+pub struct rs2_frame_queue {
+    _private: [u8; 0],
+}
+#[repr(C)]
+pub struct rs2_options {
+    _private: [u8; 0],
+}
 
 // ---- Enums (C ints) -------------------------------------------------------
 
@@ -91,6 +103,22 @@ pub struct rs2_extrinsics {
     pub rotation: [f32; 9],
     pub translation: [f32; 3],
 }
+
+/// 3D coordinates in meters. X right, Y up, Z away from the camera.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct rs2_vertex {
+    pub xyz: [f32; 3],
+}
+
+/// Pixel location within a 2D image. (0,0) top-left, X right, Y down.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct rs2_pixel {
+    pub ij: [i32; 2],
+}
+
+pub type rs2_option = i32;
 
 // ---- Error handling -------------------------------------------------------
 
@@ -312,6 +340,88 @@ extern "C" {
     ) -> *mut rs2_frame;
     pub fn rs2_embedded_frames_count(composite: *mut rs2_frame, error: *mut *mut rs2_error) -> i32;
     pub fn rs2_keep_frame(frame: *mut rs2_frame);
+    pub fn rs2_get_frame_vertices(
+        frame: *const rs2_frame,
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_vertex;
+    pub fn rs2_get_frame_points_count(frame: *const rs2_frame, error: *mut *mut rs2_error) -> i32;
+    pub fn rs2_get_frame_texture_coordinates(
+        frame: *const rs2_frame,
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_pixel;
+    pub fn rs2_export_to_ply(
+        frame: *const rs2_frame,
+        fname: *const c_char,
+        texture: *mut rs2_frame,
+        error: *mut *mut rs2_error,
+    );
+}
+
+// ---- Processing blocks -----------------------------------------------------
+
+extern "C" {
+    pub fn rs2_create_processing_block(error: *mut *mut rs2_error) -> *mut rs2_processing_block;
+    pub fn rs2_delete_processing_block(block: *mut rs2_processing_block);
+    pub fn rs2_create_decimation_filter_block(
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_processing_block;
+    pub fn rs2_create_spatial_filter_block(
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_processing_block;
+    pub fn rs2_create_temporal_filter_block(
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_processing_block;
+    pub fn rs2_create_hole_filling_filter_block(
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_processing_block;
+    pub fn rs2_create_align(
+        align_to: rs2_stream,
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_processing_block;
+    pub fn rs2_create_pointcloud(error: *mut *mut rs2_error) -> *mut rs2_processing_block;
+    pub fn rs2_start_processing_queue(
+        block: *mut rs2_processing_block,
+        queue: *mut rs2_frame_queue,
+        error: *mut *mut rs2_error,
+    );
+    pub fn rs2_process_frame(
+        block: *mut rs2_processing_block,
+        frame: *mut rs2_frame,
+        error: *mut *mut rs2_error,
+    );
+}
+
+// ---- Frame queue -----------------------------------------------------------
+
+extern "C" {
+    pub fn rs2_create_frame_queue(capacity: i32, error: *mut *mut rs2_error) -> *mut rs2_frame_queue;
+    pub fn rs2_delete_frame_queue(queue: *mut rs2_frame_queue);
+    pub fn rs2_wait_for_frame(
+        queue: *mut rs2_frame_queue,
+        timeout_ms: u32,
+        error: *mut *mut rs2_error,
+    ) -> *mut rs2_frame;
+}
+
+// ---- Options ---------------------------------------------------------------
+
+extern "C" {
+    pub fn rs2_get_option(
+        options: *const rs2_options,
+        option: rs2_option,
+        error: *mut *mut rs2_error,
+    ) -> f32;
+    pub fn rs2_set_option(
+        options: *const rs2_options,
+        option: rs2_option,
+        value: f32,
+        error: *mut *mut rs2_error,
+    );
+    pub fn rs2_supports_option(
+        options: *const rs2_options,
+        option: rs2_option,
+        error: *mut *mut rs2_error,
+    ) -> i32;
 }
 
 // ---- Sensors --------------------------------------------------------------
