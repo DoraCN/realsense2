@@ -2,9 +2,10 @@
 //! (with color texture), and exports it as PLY or ASCII PCD.
 //!
 //! Usage:
-//!   cargo run --example pointcloud -- <out.ply|out.pcd>   (default out.ply)
-//! A frame is captured after the warm-up period and exported once; Ctrl-C to
-//! stop streaming afterward.
+//!   cargo run --example pointcloud -- <out.ply|out.pcd>              (default out.ply)
+//!   cargo run --example pointcloud -- <out.ply> --serial <SN>        (pick camera by serial)
+//! A frame is captured after the warm-up period, exported once, and the
+//! program exits.
 
 use realsense2::{
     export_ply, pointcloud, Config, Context, Pipeline, Rs2CameraInfo, Rs2Error, Rs2Format,
@@ -62,9 +63,21 @@ fn export_pcd(points: &realsense2::Frame, path: &str) -> Result<(), Rs2Error> {
 }
 
 fn main() -> Result<(), Rs2Error> {
-    let out_path = std::env::args()
-        .nth(2)
-        .unwrap_or_else(|| "out.ply".to_string());
+    let mut out_path = "out.ply".to_string();
+    let mut serial_override: Option<String> = None;
+    let mut args = std::env::args().skip(2);
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--serial" => {
+                serial_override = args.next();
+                if serial_override.is_none() {
+                    eprintln!("--serial requires a value");
+                    std::process::exit(2);
+                }
+            }
+            _ => out_path = arg,
+        }
+    }
 
     let context = Context::new()?;
     let devices = context.query_devices()?;
@@ -72,7 +85,13 @@ fn main() -> Result<(), Rs2Error> {
         eprintln!("No devices found");
         return Ok(());
     }
-    let serial = pick_usb3_device(&devices);
+
+    // --serial wins; otherwise auto-pick the USB3-connected device.
+    let serial = match serial_override {
+        Some(s) => Some(s),
+        None => pick_usb3_device(&devices),
+    };
+    let which = serial.as_deref().unwrap_or("<auto>");
 
     let mut pipeline = Pipeline::new(&context)?;
     let mut config = Config::new()?;
@@ -84,7 +103,10 @@ fn main() -> Result<(), Rs2Error> {
     pipeline.start_with_config(Some(&config))?;
 
     let pc = pointcloud()?;
-    println!("Generating point cloud -> {} (streaming...)", out_path);
+    println!(
+        "Generating point cloud -> {} (SN {}) ...",
+        out_path, which
+    );
 
     let start = Instant::now();
 
